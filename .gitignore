@@ -1,0 +1,14 @@
+# Datasets
+IIT_data_set/
+Final Dataset of Telugu Handwritten Chararcters/
+extras/
+
+# Files to ignore
+promt.txt
+check_results.csv
+
+# Python dependencies
+requirements.txt
+
+#Virtual environment
+.venv/

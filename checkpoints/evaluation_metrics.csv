@@ -1,0 +1,2 @@
+epoch,train_loss,val_loss,val_acc,precision,recall,f1
+1,3.2642,3.2022,0.0000,0.3805,0.1702,0.2352
