@@ -227,6 +227,7 @@ def main():
 	parser.add_argument('--imgH', type=int, default=32)
 	parser.add_argument('--num_workers', type=int, default=2, help='DataLoader num_workers (set 0 to debug)')
 	parser.add_argument('--save', default='checkpoints')
+	parser.add_argument('--resume', default=None, help='checkpoint path to resume training from')
 	parser.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu')
 	args = parser.parse_args()
 
@@ -254,6 +255,23 @@ def main():
 	criterion = nn.CTCLoss(blank=0, zero_infinity=True)
 	optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
+	start_epoch = 1
+	if args.resume:
+		if not os.path.exists(args.resume):
+			raise FileNotFoundError(f"Checkpoint not found: {args.resume}")
+		ckpt = torch.load(args.resume, map_location=device)
+		model.load_state_dict(ckpt['model_state'])
+		if 'optimizer_state' in ckpt:
+			optimizer.load_state_dict(ckpt['optimizer_state'])
+			print(f"Loaded optimizer state from checkpoint: {args.resume}")
+		else:
+			print(f"Loaded checkpoint {args.resume} without optimizer state; optimizer will start fresh")
+		checkpoint_char_map = ckpt.get('char_map')
+		if checkpoint_char_map is not None and checkpoint_char_map != char_map:
+			raise ValueError('Checkpoint char_map does not match current dataset charset.')
+		start_epoch = ckpt.get('epoch', 0) + 1
+		print(f"Resuming training from epoch {start_epoch}")
+
 	os.makedirs(args.save, exist_ok=True)
 
 	metrics_file = os.path.join(args.save, 'evaluation_metrics.csv')
@@ -263,13 +281,22 @@ def main():
 			w = csv.writer(mf)
 			w.writerow(['epoch', 'train_loss', 'val_loss', 'val_acc', 'precision', 'recall', 'f1'])
 
-	for epoch in range(1, args.epochs + 1):
+	if start_epoch > args.epochs:
+		print(f"Checkpoint already trained through epoch {start_epoch - 1}. Set --epochs greater than {start_epoch - 1} to continue training.")
+		return
+
+	for epoch in range(start_epoch, args.epochs + 1):
 		train_loss = train_epoch(model, device, train_loader, criterion, optimizer)
 		val_loss, correct, total, precision, recall, f1 = validate(model, device, val_loader, criterion, idx2char)
 		acc = correct / total if total > 0 else 0.0
 		print(f"Epoch {epoch}: train_loss={train_loss:.4f} val_loss={val_loss:.4f} val_acc={acc:.4f} prec={precision:.4f} rec={recall:.4f} f1={f1:.4f}")
 		# prepare checkpoint dict
-		ckpt = {'epoch': epoch, 'model_state': model.state_dict(), 'char_map': char_map}
+		ckpt = {
+			'epoch': epoch,
+			'model_state': model.state_dict(),
+			'optimizer_state': optimizer.state_dict(),
+			'char_map': char_map
+		}
 		# save to the configured save folder
 		save_path = os.path.join(args.save, f'model_epoch_{epoch}.pt')
 		torch.save(ckpt, save_path)
