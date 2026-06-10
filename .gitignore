@@ -2,13 +2,20 @@
 IIT_data_set/
 Final Dataset of Telugu Handwritten Chararcters/
 extras/
+# Model with diff versions
+data_modell.py
+data_model_3.py
 
 # Files to ignore
 promt.txt
 check_results.csv
+evaluation_metrics.csv
 
 # Python dependencies
 requirements.txt
+
+# Pychace
+__pycache__/
 
 #Virtual environment
 .venv/
