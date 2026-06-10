@@ -19,10 +19,7 @@ class CRNN(nn.Module):
             nn.Conv2d(512, 512, 3, 1, 1), nn.ReLU(True), nn.MaxPool2d((2, 1), (2, 1)),
             nn.Conv2d(512, 512, 2, 1, 0), nn.ReLU(True)
         )
-        # match training model which wrapped LSTM in a Sequential (so keys include 'rnn.0...')
-        self.rnn = nn.Sequential(
-            nn.LSTM(512, nh, bidirectional=True, num_layers=2, batch_first=False),
-        )
+        self.rnn = nn.LSTM(512, nh, bidirectional=True, num_layers=2, batch_first=False)
         self.embedding = nn.Linear(nh * 2, nclass)
 
     def forward(self, x):
@@ -30,8 +27,7 @@ class CRNN(nn.Module):
         b, c, h, w = conv.size()
         conv = conv.squeeze(2)
         conv = conv.permute(2, 0, 1)
-        # training used self.rnn[0](conv)
-        recurrent, _ = self.rnn[0](conv)
+        recurrent, _ = self.rnn(conv)
         T, B, H = recurrent.size()
         output = self.embedding(recurrent.view(T * B, H))
         output = output.view(T, B, -1)
